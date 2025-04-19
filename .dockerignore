@@ -1,0 +1,37 @@
+# Git
+.git/
+.gitignore
+
+# VS Code
+.vscode/
+
+# Node modules (if any)
+node_modules/
+
+# Deno cache
+.deno_dir/
+*.lock.json
+
+# Build artifacts
+_fresh/
+*.log
+
+# Environment variables
+.env*
+
+# Tests
+tests/
+*_test.ts
+*_test.tsx
+test_*.ts
+test_*.tsx
+
+# Misc
+README.md
+LICENSE
+*.md
+.DS_Store
+
+# Uploaded files (these should be managed through volumes)
+uploads/*
+!uploads/.gitkeep

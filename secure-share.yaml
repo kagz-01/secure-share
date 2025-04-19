@@ -1,0 +1,132 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: secure-share-config
+data:
+  # Application configuration
+  NODE_ENV: "production"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secure-share-secrets
+type: Opaque
+data:
+  # These are base64 encoded secrets - replace with actual encoded values in production
+  # Example: echo -n "your-secret-key" | base64
+  ENCRYPTION_KEY: eW91ci0zMi1jaGFyLXNlY3VyZS1rZXkK # your-32-char-secure-key
+  JWT_SECRET: eW91ci1zZWNyZXQta2V5 # your-secret-key
+  DB_PASSWORD: a2FnelBhc3N3b3Jk # kagzPassword
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secure-share-service
+spec:
+  selector:
+    app: secure-share
+  ports:
+    - port: 80
+      targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-share
+  labels:
+    app: secure-share
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: secure-share
+  template:
+    metadata:
+      labels:
+        app: secure-share
+    spec:
+      containers:
+        - name: secure-share
+          image: kagz-01/secure-share:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+              name: http
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+          envFrom:
+            - configMapRef:
+                name: secure-share-config
+          env:
+            - name: ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secure-share-secrets
+                  key: ENCRYPTION_KEY
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: secure-share-secrets
+                  key: JWT_SECRET
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secure-share-secrets
+                  key: DB_PASSWORD
+          volumeMounts:
+            - name: uploads-volume
+              mountPath: /app/uploads
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: uploads-volume
+          persistentVolumeClaim:
+            claimName: secure-share-uploads-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: secure-share-uploads-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secure-share-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+    - host: secure-share.example.com  # Replace with your actual domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: secure-share-service
+                port:
+                  number: 80

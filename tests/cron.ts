@@ -1,5 +1,5 @@
 // cron.ts
-import cleanupExpiredFiles from "./routes/files/deleteExpiredFiles.ts";
+import cleanupExpiredFiles from "../routes/files/deleteExpiredFiles.ts";
 
 // Run once a day
 async function runCleanup() {
